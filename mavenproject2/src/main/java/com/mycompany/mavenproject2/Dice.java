@@ -4,10 +4,33 @@
  */
 package com.mycompany.mavenproject2;
 
+import java.io.Serializable;
+
 /**
  *
  * @author ggunes
  */
-public class Dice {
-    
+public class Dice implements Serializable {
+
+    private int number;
+    private boolean held;
+
+    public void rollDice() {
+        if (held == false) {
+            number = (int) (Math.random() * 6) + 1;
+        }
+    }
+
+    public void changeStatu() {
+        this.held = !this.held;
+    }
+
+    public boolean isHeld() {
+        return held;
+    }
+
+    public int getNumber() {
+        return number;
+    }
+
 }
