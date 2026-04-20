@@ -1,0 +1,44 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package com.mycompany.mavenproject2.Common;
+
+/**
+ *
+ * @author ggunes
+ */
+//This class is created to determine Message Format
+public class NetworkMessage {
+    public enum MessageType {
+    ROLL_DICE,      // Dice Roll Request
+    SAVE_SCORE,     // Poitn Saving
+    CHAT,           // Chat Message
+    GAME_UPDATE,    // Current Game
+    ERROR           // Error Messages
+}
+    private MessageType type; // type of message
+    private Object data ; // Sending data (Object to make flexible)
+    private String sender ; // ID of sender
+
+    public NetworkMessage(MessageType type, Object data, String sender) {
+        this.type = type;
+        this.data = data;
+        this.sender = sender;
+    }
+
+    public MessageType getType() {
+        return type;
+    }
+
+    public Object getData() {
+        return data;
+    }
+
+    public String getSender() {
+        return sender;
+    }
+    
+    
+    
+}

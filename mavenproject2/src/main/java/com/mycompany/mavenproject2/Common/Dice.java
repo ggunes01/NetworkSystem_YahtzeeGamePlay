@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package com.mycompany.mavenproject2;
+package com.mycompany.mavenproject2.Common;
 
 import java.io.Serializable;
 
@@ -10,12 +10,14 @@ import java.io.Serializable;
  *
  * @author ggunes
  */
+//This class is created to manage each dice separately
 public class Dice implements Serializable {
 
-    private int number;
-    private boolean held;
+    private int number; //Dice Value
+    private boolean held; //Statu of Dice (is it held)
 
     public void rollDice() {
+        //Dice rolling function, 
         if (held == false) {
             number = (int) (Math.random() * 6) + 1;
         }
@@ -34,3 +36,4 @@ public class Dice implements Serializable {
     }
 
 }
+
