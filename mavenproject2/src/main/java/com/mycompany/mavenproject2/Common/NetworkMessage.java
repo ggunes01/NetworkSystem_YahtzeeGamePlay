@@ -12,10 +12,12 @@ package com.mycompany.mavenproject2.Common;
 public class NetworkMessage {
     public enum MessageType {
     ROLL_DICE,      // Dice Roll Request
-    SAVE_SCORE,     // Poitn Saving
+    SAVE_SCORE,     // Point Saving
     CHAT,           // Chat Message
     GAME_UPDATE,    // Current Game
-    ERROR           // Error Messages
+    ERROR,           // Error Messages
+    CREATE_GAME,    //Request to create a new game
+    JOIN_GAME //Request to join an active game
 }
     private MessageType type; // type of message
     private Object data ; // Sending data (Object to make flexible)
