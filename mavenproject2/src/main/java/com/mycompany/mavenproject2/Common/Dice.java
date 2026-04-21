@@ -35,5 +35,13 @@ public class Dice implements Serializable {
         return number;
     }
 
+    public void setHeld(boolean held) {
+        this.held = held;
+    }
+
+    public void setNumber(int number) {
+        this.number = number;
+    }
+
 }
 
