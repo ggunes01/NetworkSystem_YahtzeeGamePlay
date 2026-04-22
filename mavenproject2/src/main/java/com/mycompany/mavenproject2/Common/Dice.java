@@ -16,11 +16,12 @@ public class Dice implements Serializable {
     private int number; //Dice Value
     private boolean held; //Statu of Dice (is it held)
 
-    public void rollDice() {
+    public int rollDice() {
         //Dice rolling function, 
         if (held == false) {
             number = (int) (Math.random() * 6) + 1;
         }
+        return number ;
     }
 
     public void changeStatu() {

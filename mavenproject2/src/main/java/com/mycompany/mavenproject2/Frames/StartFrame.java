@@ -2,7 +2,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
-package com.mycompany.mavenproject2.Client;
+package com.mycompany.mavenproject2.Frames;
 
 /**
  *
@@ -31,11 +31,14 @@ public class StartFrame extends javax.swing.JFrame {
         jLabel2 = new javax.swing.JLabel();
         jLabel1 = new javax.swing.JLabel();
         jButton2 = new javax.swing.JButton();
-        jLabel4 = new javax.swing.JLabel();
+        jLabel3 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("WELCOME TO YAHTZEE");
+        setAlwaysOnTop(true);
         setBackground(new java.awt.Color(30, 60, 120));
+        setResizable(false);
+        getContentPane().setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
         jPanel1.setBackground(new java.awt.Color(20, 100, 40));
         jPanel1.setPreferredSize(new java.awt.Dimension(900, 600));
@@ -76,10 +79,10 @@ public class StartFrame extends javax.swing.JFrame {
         jButton2.setFocusPainted(false);
         jPanel1.add(jButton2, new org.netbeans.lib.awtextra.AbsoluteConstraints(320, 390, 280, 45));
 
-        jLabel4.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/mycompany/mavenproject2/Resources/dice-2.png"))); // NOI18N
-        jPanel1.add(jLabel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(410, 190, -1, -1));
+        jLabel3.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/mycompany/mavenproject2/Client/dice-2.png"))); // NOI18N
+        jPanel1.add(jLabel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(410, 200, -1, -1));
 
-        getContentPane().add(jPanel1, java.awt.BorderLayout.CENTER);
+        getContentPane().add(jPanel1, new org.netbeans.lib.awtextra.AbsoluteConstraints(0, 0, 893, 571));
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
@@ -128,7 +131,7 @@ public class StartFrame extends javax.swing.JFrame {
     private javax.swing.JButton jButton2;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel3;
     private javax.swing.JPanel jPanel1;
     // End of variables declaration//GEN-END:variables
 }
