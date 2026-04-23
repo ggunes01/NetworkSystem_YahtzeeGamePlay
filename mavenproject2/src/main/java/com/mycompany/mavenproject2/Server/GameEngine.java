@@ -58,11 +58,11 @@ public class GameEngine {
 
         // Turn control
         if (state.getCurrentPlayer() != senderId) {
-            // Burada istersen hata mesajı gönderebilirsin: "Sıra sende değil!"
+            System.out.println("NOT YOUR TURN");
             return;
         }
 
-        // Calculate the score
+        // Calculate the score (Control)
         int score = ScoringLogic.calculateScore(category, state.getCurrentDices());
 
         // Write the point to the player' map

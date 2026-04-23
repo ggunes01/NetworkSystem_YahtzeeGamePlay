@@ -4,6 +4,8 @@
  */
 package com.mycompany.mavenproject2.Frames;
 
+import com.mycompany.mavenproject2.Client.NetworkManager;
+
 /**
  *
  * @author ggunes
@@ -89,6 +91,11 @@ public class StartFrame extends javax.swing.JFrame {
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         // TODO add your handling code here:
+        NetworkManager networkManager = new NetworkManager();
+        GameFrame gameFrame = new GameFrame(networkManager, 1);
+        gameFrame.setVisible(true);
+        this.setVisible(false);
+        
     }//GEN-LAST:event_jButton1ActionPerformed
 
     /**

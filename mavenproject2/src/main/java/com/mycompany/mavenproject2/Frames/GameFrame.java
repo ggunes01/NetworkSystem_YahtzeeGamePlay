@@ -1,44 +1,140 @@
 package com.mycompany.mavenproject2.Frames;
+
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
 
-
+import com.mycompany.mavenproject2.Client.INetworkListener;
+import com.mycompany.mavenproject2.Client.NetworkManager;
 import com.mycompany.mavenproject2.Common.Dice;
 import com.mycompany.mavenproject2.Common.GameState;
+import com.mycompany.mavenproject2.Common.NetworkMessage;
+import com.mycompany.mavenproject2.Common.NetworkMessage.MessageType;
+import com.mycompany.mavenproject2.Common.ScoringLogic;
+import java.awt.Color;
+import java.awt.Font;
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.Map;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 
 /**
  *
  * @author ggunes
  */
-public class GameFrame extends javax.swing.JFrame {
+public class GameFrame extends javax.swing.JFrame implements INetworkListener{
 
     /**
      * Creates new form GameFrame
      */
-    public GameFrame() {
+    public GameFrame(NetworkManager networkManager , int myPlayerId ) {
         initComponents();
         currentSession = new GameState();
-      }
-    private GameState currentSession; //That variable includes the current situation of the game
-    
-    
-    
-    
-    
-    public String getDiceIcon(int value) {
-    switch (value) {
-        case 1: return "⚀";
-        case 2: return "⚁";
-        case 3: return "⚂";
-        case 4: return "⚃";
-        case 5: return "⚄";
-        case 6: return "⚅";
-        default: return ""; 
+        scoreLabels = new HashMap<>();
+        this.networkManager = networkManager ;
+        this.myPlayerId = myPlayerId;
+        scoreLabels.put("Ones", lblOnes);
+        scoreLabels.put("Twos", lblTwos);
+        scoreLabels.put("Threes", lblThrees);
+        scoreLabels.put("Fours", lblFours);
+        scoreLabels.put("Fives", lblFives);
+        scoreLabels.put("Sixes", lblSixes);
+        scoreLabels.put("Three of a Kind", lblThreeKind);
+        scoreLabels.put("Four of a Kind", lblFourKind);
+        scoreLabels.put("Full House", lblFullHouse);
+        scoreLabels.put("Small Straight", lblSmallStr);
+        scoreLabels.put("Large Straight", lblLargeStr);
+        scoreLabels.put("Yahtzee", lblYahtzee);
+        scoreLabels.put("Chance", lblChance);
+        
+
+        for (String category : scoreLabels.keySet()) {
+            JLabel label = scoreLabels.get(category);
+            label.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mouseClicked(java.awt.event.MouseEvent evt) {
+                    scoreLabelClicked(category); 
+                }
+            });
+        }
     }
-}
+    private GameState currentSession; //That variable includes the current situation of the game
+    private HashMap<String, JLabel> scoreLabels;
+    private NetworkManager networkManager;
+    private Boolean isWaitingForServer = false  ;
+    private int myPlayerId = 0;
+
+    public String getDiceIcon(int value) {
+        switch (value) {
+            case 1:
+                return "⚀";
+            case 2:
+                return "⚁";
+            case 3:
+                return "⚂";
+            case 4:
+                return "⚃";
+            case 5:
+                return "⚄";
+            case 6:
+                return "⚅";
+            default:
+                return "";
+        }
+    }
+
+    private void scoreLabelClicked(String category) {
+        // Control : Is that category empty ? 
+        if (!isWaitingForServer && currentSession.getPlayer1Score().get(category) == -1) {
+            try {
+                
+                this.isWaitingForServer = true;
+                disableAllScoreLabels();
+                NetworkMessage msg = new NetworkMessage(MessageType.SAVE_SCORE, category, "Player" + myPlayerId);
+                networkManager.sendMessage(msg);
+
+                // When clicked, the dices and buttons are enable until new packet comes from server
+                
+                RollButton.setEnabled(false);
+                System.out.println(category + " sent request to save.");
+            } catch (IOException e) {
+                this.isWaitingForServer = false;
+                enableScoreLabelsIfMyTurn();
+                System.err.println("Point isn't sent: " + e.getMessage());
+            }
+        }
+    }
+
+    private void updateScorePreviews(GameState state) {
+        // Which player I am
+        Map<String, Integer> myScores = (myPlayerId == 1) ? state.getPlayer1Score() : state.getPlayer2Score();
+
+        for (String category : scoreLabels.keySet()) {
+            JLabel label = scoreLabels.get(category);
+            int fixedScore = myScores.get(category);
+
+            if (fixedScore != -1) {
+                // Case A: If point is saved
+                label.setText(String.valueOf(fixedScore));
+                label.setForeground(Color.BLACK);
+                label.setFont(label.getFont().deriveFont(Font.BOLD));
+            } else {
+                // Case B: The point is not saved
+                // Dices didn't rolled
+                if (state.getCurrentDices()[0].getNumber() == 0) {
+                    label.setText("");
+                } else {
+                    int potential = ScoringLogic.calculateScore(category, state.getCurrentDices());
+                    label.setText(String.valueOf(potential));
+                    label.setForeground(new Color(180, 180, 180)); 
+                    label.setFont(label.getFont().deriveFont(Font.PLAIN));
+                }
+            }
+        }
+    }
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -84,31 +180,31 @@ public class GameFrame extends javax.swing.JFrame {
         jLabel16 = new javax.swing.JLabel();
         jLabel17 = new javax.swing.JLabel();
         jLabel18 = new javax.swing.JLabel();
-        jLabel20 = new javax.swing.JLabel();
+        lblOnes = new javax.swing.JLabel();
         jLabel23 = new javax.swing.JLabel();
-        jLabel24 = new javax.swing.JLabel();
-        jLabel26 = new javax.swing.JLabel();
+        lblTwos = new javax.swing.JLabel();
+        lblThrees = new javax.swing.JLabel();
         jLabel27 = new javax.swing.JLabel();
         jLabel28 = new javax.swing.JLabel();
-        jLabel29 = new javax.swing.JLabel();
+        lblFours = new javax.swing.JLabel();
         jLabel30 = new javax.swing.JLabel();
-        jLabel31 = new javax.swing.JLabel();
+        lblFives = new javax.swing.JLabel();
         jLabel32 = new javax.swing.JLabel();
-        jLabel33 = new javax.swing.JLabel();
+        lblSixes = new javax.swing.JLabel();
         jLabel34 = new javax.swing.JLabel();
-        jLabel25 = new javax.swing.JLabel();
+        lblThreeKind = new javax.swing.JLabel();
         jLabel35 = new javax.swing.JLabel();
-        jLabel36 = new javax.swing.JLabel();
+        lblFourKind = new javax.swing.JLabel();
         jLabel37 = new javax.swing.JLabel();
-        jLabel38 = new javax.swing.JLabel();
+        lblFullHouse = new javax.swing.JLabel();
         jLabel39 = new javax.swing.JLabel();
-        jLabel40 = new javax.swing.JLabel();
+        lblSmallStr = new javax.swing.JLabel();
         jLabel41 = new javax.swing.JLabel();
-        jLabel42 = new javax.swing.JLabel();
+        lblLargeStr = new javax.swing.JLabel();
         jLabel43 = new javax.swing.JLabel();
-        jLabel44 = new javax.swing.JLabel();
+        lblChance = new javax.swing.JLabel();
         jLabel45 = new javax.swing.JLabel();
-        jLabel46 = new javax.swing.JLabel();
+        lblYahtzee = new javax.swing.JLabel();
         jLabel47 = new javax.swing.JLabel();
         jLabel19 = new javax.swing.JLabel();
         jLabel21 = new javax.swing.JLabel();
@@ -118,12 +214,12 @@ public class GameFrame extends javax.swing.JFrame {
         Dice3 = new javax.swing.JLabel();
         Dice4 = new javax.swing.JLabel();
         Dice5 = new javax.swing.JLabel();
-        jButton1 = new javax.swing.JButton();
-        jButton2 = new javax.swing.JButton();
-        jButton3 = new javax.swing.JButton();
-        jButton4 = new javax.swing.JButton();
-        jButton5 = new javax.swing.JButton();
-        jButton6 = new javax.swing.JButton();
+        Dice1HoldButton = new javax.swing.JButton();
+        Dice2HoldButton = new javax.swing.JButton();
+        Dice3HoldButton = new javax.swing.JButton();
+        Dice4HoldButton = new javax.swing.JButton();
+        Dice5HoldButton = new javax.swing.JButton();
+        RollButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setResizable(false);
@@ -205,7 +301,7 @@ public class GameFrame extends javax.swing.JFrame {
 
         jLabel10.setText("Large Straight");
 
-        jLabel3.setText("Change");
+        jLabel3.setText("Chance");
 
         jLabel12.setText("YAHTZEE");
 
@@ -223,17 +319,17 @@ public class GameFrame extends javax.swing.JFrame {
         jLabel18.setForeground(new java.awt.Color(255, 0, 51));
         jLabel18.setText("PLAYER 2");
 
-        jLabel20.setForeground(new java.awt.Color(255, 51, 51));
-        jLabel20.setText("0");
+        lblOnes.setForeground(new java.awt.Color(153, 153, 153));
+        lblOnes.setText("0");
 
         jLabel23.setForeground(new java.awt.Color(255, 51, 51));
         jLabel23.setText("0");
 
-        jLabel24.setForeground(new java.awt.Color(255, 51, 51));
-        jLabel24.setText("0");
+        lblTwos.setForeground(new java.awt.Color(153, 153, 153));
+        lblTwos.setText("0");
 
-        jLabel26.setForeground(new java.awt.Color(255, 51, 51));
-        jLabel26.setText("0");
+        lblThrees.setForeground(new java.awt.Color(153, 153, 153));
+        lblThrees.setText("0");
 
         jLabel27.setForeground(new java.awt.Color(255, 51, 51));
         jLabel27.setText("0");
@@ -241,62 +337,62 @@ public class GameFrame extends javax.swing.JFrame {
         jLabel28.setForeground(new java.awt.Color(255, 51, 51));
         jLabel28.setText("0");
 
-        jLabel29.setForeground(new java.awt.Color(255, 51, 51));
-        jLabel29.setText("0");
+        lblFours.setForeground(new java.awt.Color(153, 153, 153));
+        lblFours.setText("0");
 
         jLabel30.setForeground(new java.awt.Color(255, 51, 51));
         jLabel30.setText("0");
 
-        jLabel31.setForeground(new java.awt.Color(255, 51, 51));
-        jLabel31.setText("0");
+        lblFives.setForeground(new java.awt.Color(153, 153, 153));
+        lblFives.setText("0");
 
         jLabel32.setForeground(new java.awt.Color(255, 51, 51));
         jLabel32.setText("0");
 
-        jLabel33.setForeground(new java.awt.Color(255, 51, 51));
-        jLabel33.setText("0");
+        lblSixes.setForeground(new java.awt.Color(153, 153, 153));
+        lblSixes.setText("0");
 
         jLabel34.setForeground(new java.awt.Color(255, 51, 51));
         jLabel34.setText("0");
 
-        jLabel25.setForeground(new java.awt.Color(255, 51, 51));
-        jLabel25.setText("0");
+        lblThreeKind.setForeground(new java.awt.Color(153, 153, 153));
+        lblThreeKind.setText("0");
 
         jLabel35.setForeground(new java.awt.Color(255, 51, 51));
         jLabel35.setText("0");
 
-        jLabel36.setForeground(new java.awt.Color(255, 51, 51));
-        jLabel36.setText("0");
+        lblFourKind.setForeground(new java.awt.Color(153, 153, 153));
+        lblFourKind.setText("0");
 
         jLabel37.setForeground(new java.awt.Color(255, 51, 51));
         jLabel37.setText("0");
 
-        jLabel38.setForeground(new java.awt.Color(255, 51, 51));
-        jLabel38.setText("0");
+        lblFullHouse.setForeground(new java.awt.Color(153, 153, 153));
+        lblFullHouse.setText("0");
 
         jLabel39.setForeground(new java.awt.Color(255, 51, 51));
         jLabel39.setText("0");
 
-        jLabel40.setForeground(new java.awt.Color(255, 51, 51));
-        jLabel40.setText("0");
+        lblSmallStr.setForeground(new java.awt.Color(153, 153, 153));
+        lblSmallStr.setText("0");
 
         jLabel41.setForeground(new java.awt.Color(255, 51, 51));
         jLabel41.setText("0");
 
-        jLabel42.setForeground(new java.awt.Color(255, 51, 51));
-        jLabel42.setText("0");
+        lblLargeStr.setForeground(new java.awt.Color(153, 153, 153));
+        lblLargeStr.setText("0");
 
         jLabel43.setForeground(new java.awt.Color(255, 51, 51));
         jLabel43.setText("0");
 
-        jLabel44.setForeground(new java.awt.Color(255, 51, 51));
-        jLabel44.setText("0");
+        lblChance.setForeground(new java.awt.Color(153, 153, 153));
+        lblChance.setText("0");
 
         jLabel45.setForeground(new java.awt.Color(255, 51, 51));
         jLabel45.setText("0");
 
-        jLabel46.setForeground(new java.awt.Color(255, 51, 51));
-        jLabel46.setText("0");
+        lblYahtzee.setForeground(new java.awt.Color(153, 153, 153));
+        lblYahtzee.setText("0");
 
         jLabel47.setForeground(new java.awt.Color(255, 51, 51));
         jLabel47.setText("0");
@@ -335,7 +431,7 @@ public class GameFrame extends javax.swing.JFrame {
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel1)
                 .addGap(98, 98, 98)
-                .addComponent(jLabel20, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lblOnes, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jLabel23, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(56, 56, 56))
@@ -346,84 +442,84 @@ public class GameFrame extends javax.swing.JFrame {
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel2)
                 .addGap(98, 98, 98)
-                .addComponent(jLabel24, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lblTwos, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jLabel27, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(57, 57, 57))
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel4)
                 .addGap(91, 91, 91)
-                .addComponent(jLabel26, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lblThrees, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jLabel28, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(57, 57, 57))
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel5)
                 .addGap(98, 98, 98)
-                .addComponent(jLabel29, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lblFours, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jLabel30, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(57, 57, 57))
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel6)
                 .addGap(99, 99, 99)
-                .addComponent(jLabel31, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lblFives, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jLabel32, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(58, 58, 58))
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel7)
                 .addGap(99, 99, 99)
-                .addComponent(jLabel33, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lblSixes, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jLabel34, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(57, 57, 57))
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel15)
                 .addGap(42, 42, 42)
-                .addComponent(jLabel25, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lblThreeKind, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jLabel35, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(54, 54, 54))
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel11)
                 .addGap(50, 50, 50)
-                .addComponent(jLabel36, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lblFourKind, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jLabel37, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(53, 53, 53))
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel13)
                 .addGap(71, 71, 71)
-                .addComponent(jLabel38, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lblFullHouse, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jLabel39, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(52, 52, 52))
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel14)
                 .addGap(53, 53, 53)
-                .addComponent(jLabel40, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lblSmallStr, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jLabel41, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(50, 50, 50))
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel10)
                 .addGap(54, 54, 54)
-                .addComponent(jLabel42, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lblLargeStr, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jLabel43, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(49, 49, 49))
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel3)
                 .addGap(91, 91, 91)
-                .addComponent(jLabel44, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lblChance, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jLabel45, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(49, 49, 49))
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel12)
                 .addGap(80, 80, 80)
-                .addComponent(jLabel46, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(lblYahtzee, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(jLabel47, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(49, 49, 49))
@@ -440,7 +536,7 @@ public class GameFrame extends javax.swing.JFrame {
                 .addGap(4, 4, 4)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel20, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblOnes, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel23, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator12, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -449,34 +545,34 @@ public class GameFrame extends javax.swing.JFrame {
                     .addComponent(jLabel27, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                         .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(jLabel24, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(lblTwos, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator11, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(2, 2, 2)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel26, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblThrees, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel28, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator2, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(3, 3, 3)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel29, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblFours, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel30, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator10, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(2, 2, 2)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel6, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel31, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblFives, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel32, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(4, 4, 4)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel33, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblSixes, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel34, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator9, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -491,21 +587,21 @@ public class GameFrame extends javax.swing.JFrame {
                 .addGap(7, 7, 7)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel15, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel25, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblThreeKind, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel35, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jSeparator7, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(3, 3, 3)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel11, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel36, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblFourKind, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel37, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator6, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(2, 2, 2)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel13, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel38, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblFullHouse, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel39, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(jSeparator5, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -514,27 +610,27 @@ public class GameFrame extends javax.swing.JFrame {
                     .addComponent(jLabel41, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                         .addComponent(jLabel14, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addComponent(jLabel40, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(lblSmallStr, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator13, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(2, 2, 2)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel10)
-                    .addComponent(jLabel42, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblLargeStr, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel43, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator14, javax.swing.GroupLayout.PREFERRED_SIZE, 12, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(2, 2, 2)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel3)
-                    .addComponent(jLabel44, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblChance, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel45, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator15, javax.swing.GroupLayout.PREFERRED_SIZE, 12, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(jLabel12, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel46, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(lblYahtzee, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel47, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator16, javax.swing.GroupLayout.PREFERRED_SIZE, 12, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -543,17 +639,17 @@ public class GameFrame extends javax.swing.JFrame {
                 .addContainerGap(12, Short.MAX_VALUE))
         );
 
-        jPanel1.add(jPanel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(520, 10, 320, 540));
+        jPanel1.add(jPanel2, new org.netbeans.lib.awtextra.AbsoluteConstraints(480, 10, 320, 540));
 
         jLabel19.setFont(new java.awt.Font("Helvetica Neue", 1, 28)); // NOI18N
         jLabel19.setForeground(new java.awt.Color(255, 0, 51));
         jLabel19.setText("PLAYER 2");
-        jPanel1.add(jLabel19, new org.netbeans.lib.awtextra.AbsoluteConstraints(180, 80, -1, -1));
+        jPanel1.add(jLabel19, new org.netbeans.lib.awtextra.AbsoluteConstraints(160, 80, -1, -1));
 
         jLabel21.setFont(new java.awt.Font("Helvetica Neue", 1, 28)); // NOI18N
         jLabel21.setForeground(new java.awt.Color(255, 0, 51));
         jLabel21.setText("PLAYER 1");
-        jPanel1.add(jLabel21, new org.netbeans.lib.awtextra.AbsoluteConstraints(180, 490, -1, -1));
+        jPanel1.add(jLabel21, new org.netbeans.lib.awtextra.AbsoluteConstraints(160, 460, -1, -1));
 
         jPanel3.setBackground(new java.awt.Color(20, 100, 40));
 
@@ -572,51 +668,56 @@ public class GameFrame extends javax.swing.JFrame {
         Dice5.setFont(new java.awt.Font("Helvetica Neue", 0, 100)); // NOI18N
         Dice5.setText("⚀");
 
-        jButton1.setFont(new java.awt.Font("Helvetica Neue", 1, 10)); // NOI18N
-        jButton1.setText("HOLD");
-        jButton1.addActionListener(new java.awt.event.ActionListener() {
+        Dice1HoldButton.setFont(new java.awt.Font("Helvetica Neue", 1, 10)); // NOI18N
+        Dice1HoldButton.setText("HOLD");
+        Dice1HoldButton.setEnabled(false);
+        Dice1HoldButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton1ActionPerformed(evt);
+                Dice1HoldButtonActionPerformed(evt);
             }
         });
 
-        jButton2.setFont(new java.awt.Font("Helvetica Neue", 1, 10)); // NOI18N
-        jButton2.setText("HOLD");
-        jButton2.addActionListener(new java.awt.event.ActionListener() {
+        Dice2HoldButton.setFont(new java.awt.Font("Helvetica Neue", 1, 10)); // NOI18N
+        Dice2HoldButton.setText("HOLD");
+        Dice2HoldButton.setEnabled(false);
+        Dice2HoldButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton2ActionPerformed(evt);
+                Dice2HoldButtonActionPerformed(evt);
             }
         });
 
-        jButton3.setFont(new java.awt.Font("Helvetica Neue", 1, 10)); // NOI18N
-        jButton3.setText("HOLD");
-        jButton3.addActionListener(new java.awt.event.ActionListener() {
+        Dice3HoldButton.setFont(new java.awt.Font("Helvetica Neue", 1, 10)); // NOI18N
+        Dice3HoldButton.setText("HOLD");
+        Dice3HoldButton.setEnabled(false);
+        Dice3HoldButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton3ActionPerformed(evt);
+                Dice3HoldButtonActionPerformed(evt);
             }
         });
 
-        jButton4.setFont(new java.awt.Font("Helvetica Neue", 1, 10)); // NOI18N
-        jButton4.setText("HOLD");
-        jButton4.addActionListener(new java.awt.event.ActionListener() {
+        Dice4HoldButton.setFont(new java.awt.Font("Helvetica Neue", 1, 10)); // NOI18N
+        Dice4HoldButton.setText("HOLD");
+        Dice4HoldButton.setEnabled(false);
+        Dice4HoldButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton4ActionPerformed(evt);
+                Dice4HoldButtonActionPerformed(evt);
             }
         });
 
-        jButton5.setFont(new java.awt.Font("Helvetica Neue", 1, 10)); // NOI18N
-        jButton5.setText("HOLD");
-        jButton5.addActionListener(new java.awt.event.ActionListener() {
+        Dice5HoldButton.setFont(new java.awt.Font("Helvetica Neue", 1, 10)); // NOI18N
+        Dice5HoldButton.setText("HOLD");
+        Dice5HoldButton.setEnabled(false);
+        Dice5HoldButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton5ActionPerformed(evt);
+                Dice5HoldButtonActionPerformed(evt);
             }
         });
 
-        jButton6.setFont(new java.awt.Font("Helvetica Neue", 1, 18)); // NOI18N
-        jButton6.setText("ROLL DICES");
-        jButton6.addActionListener(new java.awt.event.ActionListener() {
+        RollButton.setFont(new java.awt.Font("Helvetica Neue", 1, 18)); // NOI18N
+        RollButton.setText("ROLL DICES");
+        RollButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jButton6ActionPerformed(evt);
+                RollButtonActionPerformed(evt);
             }
         });
 
@@ -629,15 +730,15 @@ public class GameFrame extends javax.swing.JFrame {
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel3Layout.createSequentialGroup()
                         .addGap(6, 6, 6)
-                        .addComponent(jButton1, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(Dice1HoldButton, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jButton2, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(Dice2HoldButton, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(18, 18, 18)
-                        .addComponent(jButton3, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(Dice3HoldButton, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(18, 18, 18)
-                        .addComponent(jButton4, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(Dice4HoldButton, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(18, 18, 18)
-                        .addComponent(jButton5, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addComponent(Dice5HoldButton, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(jPanel3Layout.createSequentialGroup()
                         .addComponent(Dice1, javax.swing.GroupLayout.PREFERRED_SIZE, 70, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -651,7 +752,7 @@ public class GameFrame extends javax.swing.JFrame {
                 .addContainerGap(10, Short.MAX_VALUE))
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addComponent(jButton6, javax.swing.GroupLayout.PREFERRED_SIZE, 181, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(RollButton, javax.swing.GroupLayout.PREFERRED_SIZE, 181, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(100, 100, 100))
         );
         jPanel3Layout.setVerticalGroup(
@@ -666,17 +767,17 @@ public class GameFrame extends javax.swing.JFrame {
                     .addComponent(Dice5, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jButton1)
-                    .addComponent(jButton2)
-                    .addComponent(jButton3)
-                    .addComponent(jButton4)
-                    .addComponent(jButton5))
+                    .addComponent(Dice1HoldButton)
+                    .addComponent(Dice2HoldButton)
+                    .addComponent(Dice3HoldButton)
+                    .addComponent(Dice4HoldButton)
+                    .addComponent(Dice5HoldButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 27, Short.MAX_VALUE)
-                .addComponent(jButton6)
+                .addComponent(RollButton)
                 .addGap(17, 17, 17))
         );
 
-        jPanel1.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 260, 390, 190));
+        jPanel1.add(jPanel3, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 250, 390, 190));
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -694,10 +795,14 @@ public class GameFrame extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
+    private void RollButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_RollButtonActionPerformed
 
         GameState state = currentSession ;
-    
+        Dice1HoldButton.setEnabled(true);
+         Dice2HoldButton.setEnabled(true);
+          Dice3HoldButton.setEnabled(true);
+           Dice4HoldButton.setEnabled(true);
+            Dice5HoldButton.setEnabled(true);
     // Control = Does the player have dice roll right ? 
     if (state.getRollsLeft() > 0) {
         Dice[] dices = state.getCurrentDices();
@@ -718,34 +823,90 @@ public class GameFrame extends javax.swing.JFrame {
         Dice5.setText(getDiceIcon(dices[4].getNumber()));
         
         // -1 Right
-        state.setRollsLeft(state.getRollsLeft() - 1);}
-    }//GEN-LAST:event_jButton6ActionPerformed
+        state.setRollsLeft(state.getRollsLeft() - 1);
+        updateScorePreviews(state);
+    }else{
+        JOptionPane.showMessageDialog(null, "All Rights Used");
+        
+       
+    }
+    
+    }//GEN-LAST:event_RollButtonActionPerformed
 
-    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+     @Override
+    public void onMessageReceived(NetworkMessage msg) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    @Override
+    public void onGameStatusUpdate(NetworkMessage msg) {
+        this.currentSession = (GameState) msg.getData();
+        updateScorePreviews(this.currentSession);
+        enableScoreLabelsIfMyTurn();
+        
+           }
+
+    @Override
+    public void onErrorMessageReceived(NetworkMessage msg) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    @Override
+    public void onJoinMessageReceived(NetworkMessage msg) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+
+    @Override
+    public void onCreateMessageReceived(NetworkMessage msg) {
+        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    }
+    
+    private void Dice1HoldButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_Dice1HoldButtonActionPerformed
         // TODO add your handling code here:
         currentSession.getCurrentDices()[0].changeStatu();
-    }//GEN-LAST:event_jButton1ActionPerformed
+    }//GEN-LAST:event_Dice1HoldButtonActionPerformed
 
-    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+    private void Dice2HoldButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_Dice2HoldButtonActionPerformed
         // TODO add your handling code here:
         currentSession.getCurrentDices()[1].changeStatu();
-    }//GEN-LAST:event_jButton2ActionPerformed
+    }//GEN-LAST:event_Dice2HoldButtonActionPerformed
 
-    private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
+    private void Dice3HoldButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_Dice3HoldButtonActionPerformed
         // TODO add your handling code here:
            currentSession.getCurrentDices()[2].changeStatu();
-    }//GEN-LAST:event_jButton3ActionPerformed
+    }//GEN-LAST:event_Dice3HoldButtonActionPerformed
 
-    private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
+    private void Dice4HoldButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_Dice4HoldButtonActionPerformed
         // TODO add your handling code here:
          currentSession.getCurrentDices()[3].changeStatu();
-    }//GEN-LAST:event_jButton4ActionPerformed
+    }//GEN-LAST:event_Dice4HoldButtonActionPerformed
 
-    private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
+    private void Dice5HoldButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_Dice5HoldButtonActionPerformed
         // TODO add your handling code here:
          currentSession.getCurrentDices()[4].changeStatu();
-    }//GEN-LAST:event_jButton5ActionPerformed
+    }//GEN-LAST:event_Dice5HoldButtonActionPerformed
     
+    private void disableAllScoreLabels() {
+    isWaitingForServer = true; // Logic  lock
+    
+    
+    for (JLabel label : scoreLabels.values()) {
+        // Don't touch the ones that are already saved; just make the preview ones slightly transparent.
+        if (label.getForeground() != Color.BLACK) {
+            label.setEnabled(false); 
+        }
+    }
+}
+
+private void enableScoreLabelsIfMyTurn() {
+    // Only unlock the lock if it's our turn.
+    if (currentSession.getCurrentPlayer() == myPlayerId) {
+        isWaitingForServer = false;
+        for (JLabel label : scoreLabels.values()) {
+            label.setEnabled(true);
+        }
+    }
+}
     /**
      * @param args the command line arguments
      */
@@ -777,23 +938,23 @@ public class GameFrame extends javax.swing.JFrame {
         java.awt.EventQueue.invokeLater(new Runnable() {
             @Override
             public void run() {
-                new GameFrame().setVisible(true);
+                //new GameFrame(networkManager).setVisible(true);
             }
         });
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel Dice1;
+    private javax.swing.JButton Dice1HoldButton;
     private javax.swing.JLabel Dice2;
+    private javax.swing.JButton Dice2HoldButton;
     private javax.swing.JLabel Dice3;
+    private javax.swing.JButton Dice3HoldButton;
     private javax.swing.JLabel Dice4;
+    private javax.swing.JButton Dice4HoldButton;
     private javax.swing.JLabel Dice5;
-    private javax.swing.JButton jButton1;
-    private javax.swing.JButton jButton2;
-    private javax.swing.JButton jButton3;
-    private javax.swing.JButton jButton4;
-    private javax.swing.JButton jButton5;
-    private javax.swing.JButton jButton6;
+    private javax.swing.JButton Dice5HoldButton;
+    private javax.swing.JButton RollButton;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
@@ -806,34 +967,21 @@ public class GameFrame extends javax.swing.JFrame {
     private javax.swing.JLabel jLabel18;
     private javax.swing.JLabel jLabel19;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel20;
     private javax.swing.JLabel jLabel21;
     private javax.swing.JLabel jLabel23;
-    private javax.swing.JLabel jLabel24;
-    private javax.swing.JLabel jLabel25;
-    private javax.swing.JLabel jLabel26;
     private javax.swing.JLabel jLabel27;
     private javax.swing.JLabel jLabel28;
-    private javax.swing.JLabel jLabel29;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel30;
-    private javax.swing.JLabel jLabel31;
     private javax.swing.JLabel jLabel32;
-    private javax.swing.JLabel jLabel33;
     private javax.swing.JLabel jLabel34;
     private javax.swing.JLabel jLabel35;
-    private javax.swing.JLabel jLabel36;
     private javax.swing.JLabel jLabel37;
-    private javax.swing.JLabel jLabel38;
     private javax.swing.JLabel jLabel39;
     private javax.swing.JLabel jLabel4;
-    private javax.swing.JLabel jLabel40;
     private javax.swing.JLabel jLabel41;
-    private javax.swing.JLabel jLabel42;
     private javax.swing.JLabel jLabel43;
-    private javax.swing.JLabel jLabel44;
     private javax.swing.JLabel jLabel45;
-    private javax.swing.JLabel jLabel46;
     private javax.swing.JLabel jLabel47;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JLabel jLabel6;
@@ -859,5 +1007,20 @@ public class GameFrame extends javax.swing.JFrame {
     private javax.swing.JSeparator jSeparator7;
     private javax.swing.JSeparator jSeparator8;
     private javax.swing.JSeparator jSeparator9;
+    private javax.swing.JLabel lblChance;
+    private javax.swing.JLabel lblFives;
+    private javax.swing.JLabel lblFourKind;
+    private javax.swing.JLabel lblFours;
+    private javax.swing.JLabel lblFullHouse;
+    private javax.swing.JLabel lblLargeStr;
+    private javax.swing.JLabel lblOnes;
+    private javax.swing.JLabel lblSixes;
+    private javax.swing.JLabel lblSmallStr;
+    private javax.swing.JLabel lblThreeKind;
+    private javax.swing.JLabel lblThrees;
+    private javax.swing.JLabel lblTwos;
+    private javax.swing.JLabel lblYahtzee;
     // End of variables declaration//GEN-END:variables
+
+   
 }

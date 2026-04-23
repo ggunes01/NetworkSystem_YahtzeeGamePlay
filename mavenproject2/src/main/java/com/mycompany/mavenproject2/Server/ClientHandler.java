@@ -47,7 +47,7 @@ public class ClientHandler implements Runnable {
                     String newId = GameEngine.createNewGame(this);
                     this.currentSession = GameEngine.getGameSession(newId);
 
-                    // 2. İstemciye oluşturulan ID'yi gönder Send the ID to the Clıent
+                    // Send the generated ID to the client.
                     sendToClient(new NetworkMessage(MessageType.CREATE_GAME, newId, "SERVER"));
                     break;
 
@@ -61,16 +61,29 @@ public class ClientHandler implements Runnable {
                         // Announce to both player that the game is started (Broadcast)
                         broadcastToRoom(new NetworkMessage(MessageType.GAME_UPDATE, session.getGameState(), "SERVER"));
                     } else {
-                        sendToClient(new NetworkMessage(MessageType.ERROR, "Oda bulunamadı veya dolu!", "SERVER"));
+                        sendToClient(new NetworkMessage(MessageType.ERROR, "Room couln't find or Full!", "SERVER"));
                     }
                     break;
 
                 case SAVE_SCORE:
                     if (currentSession != null) {
-                        // Handle the point
-                        GameEngine.processScore(currentSession, (String) msg.getData(), this);
-                        // Announce the current situation to all players
-                        broadcastToRoom(new NetworkMessage(MessageType.GAME_UPDATE, currentSession.getGameState(), "SERVER"));
+                        // Get category information from the incoming message.(Ones, Full House vb.)
+                        String category = (String) msg.getData();
+
+                        //  Enter this score into GameEngine (Calculation is done here)
+                        // We send 'this' because the handler understands which player (P1 or P2) the point should be awarded to.
+                        GameEngine.processScore(currentSession, category, this);
+
+                        // PUBLISH THE UPDATE
+                        // We send the new GameState, which is generated after the score is entered, to everyone.
+                        NetworkMessage updateMsg = new NetworkMessage(
+                                MessageType.GAME_UPDATE,
+                                currentSession.getGameState(),
+                                "SERVER"
+                        );
+                        broadcastToRoom(updateMsg);
+
+                        System.out.println("Point saved and shared: " + category);
                     }
                     break;
 
