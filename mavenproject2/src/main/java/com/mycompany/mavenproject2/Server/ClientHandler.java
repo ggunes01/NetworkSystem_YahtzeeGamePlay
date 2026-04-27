@@ -4,6 +4,8 @@
  */
 package com.mycompany.mavenproject2.Server;
 
+import com.mycompany.mavenproject2.Common.Dice;
+import com.mycompany.mavenproject2.Common.GameState;
 import com.mycompany.mavenproject2.Common.NetworkMessage;
 import com.mycompany.mavenproject2.Common.NetworkMessage.MessageType;
 import java.io.*;
@@ -13,6 +15,10 @@ import java.net.Socket;
  *
  * @author ggunes
  */
+// Handles communication between the server and a single connected client.
+// Listens for incoming messages (create game, join game, chat, game updates)
+// and processes them accordingly. Also responsible for sending messages
+// back to the client and broadcasting updates to players in the same game session.
 public class ClientHandler implements Runnable {
 
     private Socket socket;
@@ -30,12 +36,17 @@ public class ClientHandler implements Runnable {
         try {
             out = new ObjectOutputStream(socket.getOutputStream());
             in = new ObjectInputStream(socket.getInputStream());
+
+            System.out.println("New client connected. Waiting for action...");
+
             while (true) {
                 NetworkMessage msg = (NetworkMessage) in.readObject();
                 handleMessage(msg);
             }
         } catch (Exception e) {
-            System.out.println("Client Connection Error: " + e.getMessage());
+            System.out.println("Client Connection Lost: " + e.getMessage());
+
+            ServerMain.allClients.remove(this);
         }
     }
 
@@ -44,11 +55,11 @@ public class ClientHandler implements Runnable {
             switch (msg.getType()) {
                 case CREATE_GAME:
                     // Create a new room and assign this handler to the room
-                    String newId = GameEngine.createNewGame(this);
-                    this.currentSession = GameEngine.getGameSession(newId);
+                    String newRoomId = GameEngine.createNewGame(this);
+                    this.currentSession = GameEngine.getGameSession(newRoomId);
 
                     // Send the generated ID to the client.
-                    sendToClient(new NetworkMessage(MessageType.CREATE_GAME, newId, "SERVER"));
+                    sendToClient(new NetworkMessage(MessageType.CREATE_GAME, newRoomId, "SERVER"));
                     break;
 
                 case JOIN_GAME:
@@ -58,6 +69,8 @@ public class ClientHandler implements Runnable {
 
                     if (session != null) {
                         this.currentSession = session;
+
+                        sendToClient(new NetworkMessage(MessageType.JOIN_GAME, joinId, "SERVER"));
                         // Announce to both player that the game is started (Broadcast)
                         broadcastToRoom(new NetworkMessage(MessageType.GAME_UPDATE, session.getGameState(), "SERVER"));
                     } else {
@@ -67,23 +80,19 @@ public class ClientHandler implements Runnable {
 
                 case SAVE_SCORE:
                     if (currentSession != null) {
-                        // Get category information from the incoming message.(Ones, Full House vb.)
-                        String category = (String) msg.getData();
+                        Object[] receivedData = (Object[]) msg.getData();
+                        String cat = (String) receivedData[0];
 
-                        //  Enter this score into GameEngine (Calculation is done here)
-                        // We send 'this' because the handler understands which player (P1 or P2) the point should be awarded to.
-                        GameEngine.processScore(currentSession, category, this);
+                        // Apply the score (The order changes here)
+                        GameEngine.processScore(currentSession, cat, this);
 
-                        // PUBLISH THE UPDATE
-                        // We send the new GameState, which is generated after the score is entered, to everyone.
+                        // Send updated status to everyone
                         NetworkMessage updateMsg = new NetworkMessage(
                                 MessageType.GAME_UPDATE,
                                 currentSession.getGameState(),
                                 "SERVER"
                         );
                         broadcastToRoom(updateMsg);
-
-                        System.out.println("Point saved and shared: " + category);
                     }
                     break;
 
@@ -91,6 +100,17 @@ public class ClientHandler implements Runnable {
                     // Chat Message
                     broadcastToRoom(msg);
                     break;
+                case GAME_UPDATE:
+                    if (currentSession != null) {
+                        GameState incomingState = (GameState) msg.getData();
+                        // Fully update the main status on the server.
+                        currentSession.setGameState(incomingState);
+
+                        // Spread the word to all players.
+                        broadcastToRoom(new NetworkMessage(MessageType.GAME_UPDATE, incomingState, "SERVER"));
+                    }
+                    break;
+
             }
         } catch (IOException e) {
             System.err.println("Message process error: " + e.getMessage());
@@ -109,6 +129,7 @@ public class ClientHandler implements Runnable {
     }
 
     public void sendToClient(NetworkMessage msg) throws IOException {
+        out.reset();
         out.writeObject(msg);
         out.flush();
     }

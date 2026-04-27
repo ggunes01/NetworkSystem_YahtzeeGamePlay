@@ -52,7 +52,10 @@ public class GameEngine {
     //Method calculates the score and writes it to the table
     public static void processScore(GameSession session, String category, ClientHandler sender) {
         GameState state = session.getGameState();
-
+        if (state == null) {
+            System.err.println("Error: GameState null! Session ID: " + session.getGameId());
+            return;
+        }
         // It detects: is sender 1 or 2 ?
         int senderId = (sender == session.getPlayer1()) ? 1 : 2;
 
@@ -61,29 +64,40 @@ public class GameEngine {
             System.out.println("NOT YOUR TURN");
             return;
         }
+        // Get Score Map
+    Map<String, Integer> scoreMap =
+            (senderId == 1) ? state.getPlayer1Score() : state.getPlayer2Score();
+    
+          // Category already used Control
+        if (scoreMap.get(category) != -1) {
+            System.out.println("Category already used: " + category);
+            return;
+        }
 
         // Calculate the score (Control)
         int score = ScoringLogic.calculateScore(category, state.getCurrentDices());
 
-        // Write the point to the player' map
+        // Save Score
+        scoreMap.put(category, score);
+
+        // CHANGE TURN
         if (senderId == 1) {
-            state.getPlayer1Score().put(category, score);
-            state.setCurrentPlayer(2); // Turn to 2. player
+            state.setCurrentPlayer(2);
         } else {
-            state.getPlayer2Score().put(category, score);
-            state.setCurrentPlayer(1); // Turn to 1. player
+            state.setCurrentPlayer(1);
         }
 
-        // For new your reset the dices and rights
+        // RESET ROUND
         state.setRollsLeft(3);
+
         for (Dice d : state.getCurrentDices()) {
-            d.setHeld(false); // Release the held dices
-            d.setNumber(0);    // Make all dices 0
+            d.setHeld(false);
+            d.setNumber(0);
         }
 
-        // Game over control
-        // If both players all categories are full, game is over
-        if (isScoreTableFull(state.getPlayer1Score()) && isScoreTableFull(state.getPlayer2Score())) {
+        // GAME OVER CHECK
+        if (isScoreTableFull(state.getPlayer1Score())
+                && isScoreTableFull(state.getPlayer2Score())) {
             state.setGameOver(true);
         }
     }

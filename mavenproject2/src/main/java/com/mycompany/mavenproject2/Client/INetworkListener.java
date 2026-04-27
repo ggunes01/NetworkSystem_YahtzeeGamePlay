@@ -14,7 +14,7 @@ import com.mycompany.mavenproject2.Common.NetworkMessage;
 public interface INetworkListener {
     
     // It trigers when chat message is sent
-    void onMessageReceived(NetworkMessage msg);
+    void onChatMessageReceived(NetworkMessage msg);
     
     // It trigers when a game situation is updated
     void onGameStatusUpdate(NetworkMessage msg);
@@ -27,4 +27,5 @@ public interface INetworkListener {
     
     //It trigers when a client wants to create a new game
     void onCreateMessageReceived(NetworkMessage msg);
+   
 }

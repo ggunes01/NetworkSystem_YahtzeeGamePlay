@@ -4,12 +4,14 @@
  */
 package com.mycompany.mavenproject2.Common;
 
+import java.io.Serializable;
+
 /**
  *
  * @author ggunes
  */
 //This class is created to determine Message Format
-public class NetworkMessage {
+public class NetworkMessage implements Serializable {
     public enum MessageType {
     ROLL_DICE,      // Dice Roll Request
     SAVE_SCORE,     // Point Saving
@@ -17,7 +19,7 @@ public class NetworkMessage {
     GAME_UPDATE,    // Current Game
     ERROR,           // Error Messages
     CREATE_GAME,    //Request to create a new game
-    JOIN_GAME //Request to join an active game
+    JOIN_GAME, //Request to join an active game
 }
     private MessageType type; // type of message
     private Object data ; // Sending data (Object to make flexible)

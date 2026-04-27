@@ -10,15 +10,19 @@ import com.mycompany.mavenproject2.Common.GameState;
  *
  * @author ggunes
  */
+// Represents a single Yahtzee game session on the server.
+// Stores the game ID, the two connected players, and the current GameState.
+// Each session is created when a player starts a game and another player joins it.
 public class GameSession {
-    private String gameId ;
+
+    private String gameId;
     private ClientHandler player1;
-    private ClientHandler player2 ;
+    private ClientHandler player2;
     private GameState gameState;
 
     public GameSession(String gameId) {
         this.gameId = gameId;
-        this.gameState = gameState;
+        this.gameState = new GameState();
     }
 
     public String getGameId() {
@@ -43,6 +47,10 @@ public class GameSession {
 
     public void setPlayer2(ClientHandler player2) {
         this.player2 = player2;
+    }
+
+    public void setGameState(GameState gameState) {
+        this.gameState = gameState;
     }
 
 }

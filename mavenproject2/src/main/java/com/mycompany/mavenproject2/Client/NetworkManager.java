@@ -14,6 +14,12 @@ import java.net.Socket;
  *
  * @author ggunes
  */
+
+// Manages the client-side network connection with the game server.
+// Responsible for sending messages to the server and continuously
+// listening for incoming messages on a separate thread.
+// Received messages are forwarded to the GUI through the INetworkListener.
+
 public class NetworkManager implements Runnable {
 
     private Socket socket;
@@ -58,7 +64,7 @@ public class NetworkManager implements Runnable {
 
         switch (msg.getType()) {
             case CHAT:
-                listener.onMessageReceived(msg);
+                listener.onChatMessageReceived(msg);
                 break;
             case GAME_UPDATE:
                 listener.onGameStatusUpdate(msg);
@@ -78,6 +84,7 @@ public class NetworkManager implements Runnable {
     //Message Sender Function
     public void sendMessage(NetworkMessage msg) throws IOException {
         if (out != null) {
+            out.reset();
             out.writeObject(msg);
             out.flush();
 
@@ -91,4 +98,10 @@ public class NetworkManager implements Runnable {
     if (out != null) out.close();
     if (socket != null) socket.close();
 }
+
+    public void setListener(INetworkListener listener) {
+        this.listener = listener;
+    }
+    
+    
 }

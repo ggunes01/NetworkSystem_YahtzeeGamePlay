@@ -4,6 +4,10 @@
  */
 package com.mycompany.mavenproject2.Frames;
 
+import com.mycompany.mavenproject2.Client.NetworkManager;
+import com.mycompany.mavenproject2.Common.NetworkMessage;
+import com.mycompany.mavenproject2.Common.NetworkMessage.MessageType;
+import java.io.IOException;
 import javax.swing.JOptionPane;
 
 /**
@@ -17,9 +21,10 @@ public class JoinGameScreen extends javax.swing.JFrame {
      */
     public JoinGameScreen() {
         initComponents();
-        
+        this.networkManager = new NetworkManager();
 
     }
+    private NetworkManager networkManager;
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -43,6 +48,7 @@ public class JoinGameScreen extends javax.swing.JFrame {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setAlwaysOnTop(true);
+        setLocation(new java.awt.Point(320, 170));
         setPreferredSize(new java.awt.Dimension(893, 571));
         setResizable(false);
         setSize(new java.awt.Dimension(893, 571));
@@ -88,6 +94,11 @@ public class JoinGameScreen extends javax.swing.JFrame {
         jButton1.setFont(new java.awt.Font("Copperplate", 1, 18)); // NOI18N
         jButton1.setForeground(new java.awt.Color(255, 255, 255));
         jButton1.setText("JOIN");
+        jButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton1ActionPerformed(evt);
+            }
+        });
         jPanel1.add(jButton1, new org.netbeans.lib.awtextra.AbsoluteConstraints(400, 360, 100, 30));
 
         jLabel5.setFont(new java.awt.Font("Copperplate", 1, 13)); // NOI18N
@@ -130,23 +141,61 @@ public class JoinGameScreen extends javax.swing.JFrame {
 
     private void RoomId(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_RoomId
         // TODO add your handling code here:
-       
+
     }//GEN-LAST:event_RoomId
 
     private void jLabel5MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jLabel5MouseClicked
         // TODO add your handling code here:
-            JOptionPane.showMessageDialog(this,
-        "Your friend can find the room code in the bottom-right corner of the game screen.");
+        JOptionPane.showMessageDialog(this,
+                "Your friend can find the room code in the bottom-right corner of the game screen.");
 
     }//GEN-LAST:event_jLabel5MouseClicked
 
     private void jMenu1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jMenu1MouseClicked
         // TODO add your handling code here:
-        
+
         StartFrame startFrame = new StartFrame();
         startFrame.setVisible(true);
         this.setVisible(false);
     }//GEN-LAST:event_jMenu1MouseClicked
+
+    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+        // TODO add your handling code here:
+        String inputRoomID = jTextField1.getText().trim().toUpperCase();
+        if (inputRoomID.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please Enter a Room ID!");
+            return;
+        }
+        try {
+
+            networkManager.connect("127.0.0.1", 5001, new NetworkAdapter() {
+                @Override
+                public void onJoinMessageReceived(NetworkMessage msg) {
+                    // The data that comes from Server is Room ID
+                    String confirmedRoomID = (String) msg.getData();
+
+                    java.awt.EventQueue.invokeLater(() -> {
+                        // We start Game Frame as Player 2
+                        GameFrame game = new GameFrame(networkManager, 2, confirmedRoomID);
+                        networkManager.setListener(game);
+                        game.setVisible(true);
+                        dispose(); // Close the Join Screen
+                    });
+                }
+
+                @Override
+                public void onErrorMessageReceived(NetworkMessage msg) {
+                    JOptionPane.showMessageDialog(null, "Error: " + msg.getData());
+                }
+            });
+
+            // Sending Joining Game Request to Server
+            networkManager.sendMessage(new NetworkMessage(MessageType.JOIN_GAME, inputRoomID, "Player2"));
+
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, "No Connection!");
+        }
+    }//GEN-LAST:event_jButton1ActionPerformed
 
     /**
      * @param args the command line arguments

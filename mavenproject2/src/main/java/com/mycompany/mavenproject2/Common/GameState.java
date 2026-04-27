@@ -12,7 +12,10 @@ import java.util.Map;
  *
  * @author ggunes
  */
-//This class is to manage game
+// Represents the current state of the Yahtzee game.
+// Stores dice values, remaining rolls, current player's turn,
+// game over status, and both players' score tables.
+// This object is sent between client and server during the game.
 public class GameState implements Serializable {
 
     private static final long serialVersionUID = 1L; //Version Checking

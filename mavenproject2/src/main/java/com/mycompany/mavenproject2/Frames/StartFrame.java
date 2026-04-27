@@ -5,6 +5,12 @@
 package com.mycompany.mavenproject2.Frames;
 
 import com.mycompany.mavenproject2.Client.NetworkManager;
+import com.mycompany.mavenproject2.Common.NetworkMessage;
+import com.mycompany.mavenproject2.Common.NetworkMessage.MessageType;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -17,7 +23,9 @@ public class StartFrame extends javax.swing.JFrame {
      */
     public StartFrame() {
         initComponents();
+        networkManager = new NetworkManager();
     }
+    private NetworkManager networkManager;
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -39,6 +47,7 @@ public class StartFrame extends javax.swing.JFrame {
         setTitle("WELCOME TO YAHTZEE");
         setAlwaysOnTop(true);
         setBackground(new java.awt.Color(30, 60, 120));
+        setLocation(new java.awt.Point(320, 170));
         setResizable(false);
         getContentPane().setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
@@ -79,6 +88,11 @@ public class StartFrame extends javax.swing.JFrame {
         jButton2.setBorder(javax.swing.BorderFactory.createBevelBorder(javax.swing.border.BevelBorder.RAISED));
         jButton2.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         jButton2.setFocusPainted(false);
+        jButton2.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton2ActionPerformed(evt);
+            }
+        });
         jPanel1.add(jButton2, new org.netbeans.lib.awtextra.AbsoluteConstraints(320, 390, 280, 45));
 
         jLabel3.setIcon(new javax.swing.ImageIcon(getClass().getResource("/com/mycompany/mavenproject2/Client/dice-2.png"))); // NOI18N
@@ -91,12 +105,50 @@ public class StartFrame extends javax.swing.JFrame {
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         // TODO add your handling code here:
-        NetworkManager networkManager = new NetworkManager();
-        GameFrame gameFrame = new GameFrame(networkManager, 1);
-        gameFrame.setVisible(true);
-        this.setVisible(false);
-        
+
+        try {
+
+            NetworkAdapter myAdapter = new NetworkAdapter() {
+                @Override
+                public void onCreateMessageReceived(NetworkMessage msg) {
+                    String roomID = (String) msg.getData();
+                    openGameScreen(roomID);
+                }
+            };
+
+            networkManager.connect("127.0.0.1", 5001, myAdapter);
+
+            NetworkMessage createMsg = new NetworkMessage(MessageType.CREATE_GAME, null, "1");
+            networkManager.sendMessage(createMsg);
+            System.out.println("Create Request's sent...");
+        } catch (IOException ex) {
+            Logger.getLogger(StartFrame.class.getName()).log(Level.SEVERE, null, ex);
+            System.out.println("Error in connection: " + ex.getMessage());
+            JOptionPane.showMessageDialog(this, "NO CONNECTION: " + ex.getMessage());
+        }
+
+
     }//GEN-LAST:event_jButton1ActionPerformed
+    private void openGameScreen(String roomID) {
+        java.awt.EventQueue.invokeLater(() -> {
+            // Start Game Frame as the player 1
+            GameFrame game = new GameFrame(networkManager, 1, roomID);
+
+            
+            networkManager.setListener(game);
+
+            game.setVisible(true);
+            this.dispose(); // Close the StartFrame
+        });
+    }
+
+
+    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+        // TODO add your handling code here:
+        JoinGameScreen joinFrame = new JoinGameScreen();
+        joinFrame.setVisible(true);
+        this.setVisible(false);
+    }//GEN-LAST:event_jButton2ActionPerformed
 
     /**
      * @param args the command line arguments
