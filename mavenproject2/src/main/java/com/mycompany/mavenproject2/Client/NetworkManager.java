@@ -26,10 +26,20 @@ public class NetworkManager implements Runnable {
     private ObjectOutputStream out;
     private ObjectInputStream in;
     private boolean isRunning = false;
+     // Marks whether the connection was closed intentionally by the client.
+    // This prevents normal exits from being treated as server failures.
+    private boolean manualDisconnect = false;
     private INetworkListener listener;
+    // Stores the last successful connection details so reconnect can try the same server again.
+    private String lastIp;
+    private int lastPort;
 
-    public void connect(String ip, int port, INetworkListener listener) throws IOException {
+    // Opens a connection to the server and starts a background listener thread.
+    public synchronized void connect(String ip, int port, INetworkListener listener) throws IOException {
+        this.lastIp = ip;
+        this.lastPort = port;
         this.listener = listener;
+        this.manualDisconnect = false;
         this.socket = new Socket(ip, port);
         this.out = new ObjectOutputStream(socket.getOutputStream());
         this.in = new ObjectInputStream(socket.getInputStream());
@@ -39,7 +49,7 @@ public class NetworkManager implements Runnable {
         listenThread.start();
     }
 
-    //It always listens the port for a new message
+    // Continuously listens for messages from the server until the connection is closed.
     @Override
     public void run() {
         try {
@@ -51,6 +61,14 @@ public class NetworkManager implements Runnable {
         } catch (Exception e) {
             System.err.println("Connection error : " + e.getMessage());
             isRunning = false;
+            closeResources();
+
+            if (!manualDisconnect && listener != null) {
+                listener.onErrorMessageReceived(new NetworkMessage(
+                        NetworkMessage.MessageType.ERROR,
+                        "The server connection was interrupted. The game cannot continue.",
+                        "NETWORK"));
+            }
 
         }
     }
@@ -81,8 +99,8 @@ public class NetworkManager implements Runnable {
         }
     }
 
-    //Message Sender Function
-    public void sendMessage(NetworkMessage msg) throws IOException {
+    // Sends a message to the server through the current output stream.
+    public synchronized void sendMessage(NetworkMessage msg) throws IOException {
         if (out != null) {
             out.reset();
             out.writeObject(msg);
@@ -91,13 +109,51 @@ public class NetworkManager implements Runnable {
         }
     }
 
+    // Attempts to reconnect using the last known IP, port, and listener.
+    public synchronized boolean reconnect() {
+        closeResources();
+        if (lastIp == null || lastPort == 0 || listener == null) {
+            return false;
+        }
+
+        try {
+            connect(lastIp, lastPort, listener);
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
     //Disconnection method to prevent memory leak. Also, it checks Null Excepitons
-    public void disconnect() throws IOException {
-    isRunning = false;
-    if (in != null) in.close();
-    if (out != null) out.close();
-    if (socket != null) socket.close();
-}
+    public synchronized void disconnect() throws IOException {
+        manualDisconnect = true;
+        isRunning = false;
+        if (in != null) in.close();
+        if (out != null) out.close();
+        if (socket != null) socket.close();
+    }
+
+    // Safely closes socket resources and clears references.
+    private void closeResources() {
+        try {
+            if (in != null) in.close();
+        } catch (IOException e) {
+            System.err.println("Input stream could not be closed: " + e.getMessage());
+        }
+        try {
+            if (out != null) out.close();
+        } catch (IOException e) {
+            System.err.println("Output stream could not be closed: " + e.getMessage());
+        }
+        try {
+            if (socket != null) socket.close();
+        } catch (IOException e) {
+            System.err.println("Socket could not be closed: " + e.getMessage());
+        }
+        in = null;
+        out = null;
+        socket = null;
+    }
 
     public void setListener(INetworkListener listener) {
         this.listener = listener;

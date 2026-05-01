@@ -59,6 +59,7 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
             });
         }
         roomIDlbl.setText(roomId);
+        resetFinalScoreLabels();
     }
     private GameState currentSession; //That variable includes the current situation of the game
     private HashMap<String, JLabel> scoreLabels;
@@ -66,6 +67,8 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
     private HashMap<String, JLabel> player2ScoreLabels;
     private NetworkManager networkManager;
     private Boolean isWaitingForServer = false;
+    private boolean gameOverDialogShown = false;
+    private boolean reconnectInProgress = false;
     private int myPlayerId;
     private String roomId;
 
@@ -133,7 +136,7 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
                 System.out.println("Local update completed, next up: Player " + nextPlayer);
 
             } catch (IOException e) {
-                // Hata olursa geri al
+                // If there is a mistake, undo
                 this.isWaitingForServer = false;
                 enableScoreLabelsIfMyTurn();
                 System.err.println("Connection Error: " + e.getMessage());
@@ -146,6 +149,7 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
 
         renderSavedScores(player1ScoreLabels, state.getPlayer1Score());
         renderSavedScores(player2ScoreLabels, state.getPlayer2Score());
+        updateFinalScoreLabels(state);
 
         for (String category : scoreLabels.keySet()) {
             JLabel label = scoreLabels.get(category);
@@ -216,6 +220,183 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
             label.setForeground(Color.BLACK);
             label.setFont(label.getFont().deriveFont(Font.BOLD));
         }
+    }
+
+    private void updateFinalScoreLabels(GameState state) {
+        if (state == null || !state.isGameOver()) {
+            resetFinalScoreLabels();
+            return;
+        }
+
+        int p1UpperTotal = ScoringLogic.calculateUpperSectionTotal(state.getPlayer1Score());
+        int p2UpperTotal = ScoringLogic.calculateUpperSectionTotal(state.getPlayer2Score());
+        int p1Bonus = ScoringLogic.calculateUpperSectionBonus(state.getPlayer1Score());
+        int p2Bonus = ScoringLogic.calculateUpperSectionBonus(state.getPlayer2Score());
+        int p1FinalScore = ScoringLogic.calculateFinalScore(state.getPlayer1Score());
+        int p2FinalScore = ScoringLogic.calculateFinalScore(state.getPlayer2Score());
+
+        player1Total.setText(String.valueOf(p1UpperTotal));
+        player2Total.setText(String.valueOf(p2UpperTotal));
+        player1Bonus.setText(String.valueOf(p1Bonus));
+        player2Bonus.setText(String.valueOf(p2Bonus));
+        player1Score.setText(String.valueOf(p1FinalScore));
+        player2Score.setText(String.valueOf(p2FinalScore));
+    }
+
+    private void resetFinalScoreLabels() {
+        player1Total.setText("");
+        player2Total.setText("");
+        player1Bonus.setText("");
+        player2Bonus.setText("");
+        player1Score.setText("");
+        player2Score.setText("");
+    }
+
+    private void showGameOverDialog() {
+        if (gameOverDialogShown) {
+            return;
+        }
+        gameOverDialogShown = true;
+
+        int p1FinalScore = ScoringLogic.calculateFinalScore(currentSession.getPlayer1Score());
+        int p2FinalScore = ScoringLogic.calculateFinalScore(currentSession.getPlayer2Score());
+        String winnerText;
+
+        if (p1FinalScore > p2FinalScore) {
+            winnerText = "Winner: Player 1";
+        } else if (p2FinalScore > p1FinalScore) {
+            winnerText = "Winner: Player 2";
+        } else {
+            winnerText = "DRAW";
+        }
+
+        Object[] options = {"Play Again", "Exit the Game"};
+        int choice = JOptionPane.showOptionDialog(
+                this,
+                winnerText + "\nPlayer 1 Score: " + p1FinalScore + "\nPlayer 2 Score: " + p2FinalScore,
+                "Oyun Bitti",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.INFORMATION_MESSAGE,
+                null,
+                options,
+                options[0]);
+
+        if (choice == JOptionPane.YES_OPTION) {
+            restartGame();
+        } else {
+            exitGame();
+        }
+    }
+
+    private void restartGame() {
+        // Create a fresh game state while keeping both players in the same room.
+        GameState newGameState = new GameState();
+
+        try {
+            // Send the new state to the server so both clients restart together.
+            networkManager.sendMessage(new NetworkMessage(MessageType.GAME_UPDATE, newGameState, "Player" + myPlayerId));
+        } catch (IOException e) {
+            System.err.println("Game could not be restarted: " + e.getMessage());
+            JOptionPane.showMessageDialog(this, "Game could not be restarted: " + e.getMessage());
+            return;
+        }
+
+        // Update the local client immediately instead of waiting for the server echo.
+        this.currentSession = newGameState;
+        this.gameOverDialogShown = false;
+        this.isWaitingForServer = false;
+
+         // Clear final score labels and redraw the score table for a new game.
+        resetFinalScoreLabels();
+        updateScorePreviews(currentSession);
+        // Clear dice visuals and reset hold states.
+        Dice1.setText("");
+        Dice2.setText("");
+        Dice3.setText("");
+        Dice4.setText("");
+        Dice5.setText("");
+        resetDiceHoldButtons();
+
+        // Player 1 always starts the new game.
+        RollButton.setEnabled(myPlayerId == 1);
+        if (myPlayerId == 1) {
+            enableScoreLabelsIfMyTurn();
+        } else {
+            disableAllScoreLabels();
+            setHoldButtonsEnabled(false);
+        }
+
+        revalidate();
+        repaint();
+    }
+
+    private void exitGame() {
+        try {
+            networkManager.disconnect();
+        } catch (IOException e) {
+            System.err.println("Connection could not be closed: " + e.getMessage());
+        }
+        System.exit(0);
+    }
+
+    private void handleServerDisconnected(String errorMessage) {
+        // Prevent multiple reconnect threads from starting for the same connection loss.
+        if (reconnectInProgress) {
+            return;
+        }
+        reconnectInProgress = true;
+
+        // Lock the game UI because the game cannot continue without the server.
+        isWaitingForServer = true;
+        RollButton.setEnabled(false);
+        disableAllScoreLabels();
+        setHoldButtonsEnabled(false);
+
+        // Start a background thread that periodically tries to reconnect to the server.
+        Thread reconnectThread = new Thread(() -> {
+            while (reconnectInProgress) {
+                try {
+                     // Wait before each retry to avoid constantly hammering the server.
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+
+                // If the server is back online, return the user to the main menu.
+                if (networkManager.reconnect()) {
+                    java.awt.EventQueue.invokeLater(() -> {
+                        try {
+                             // Close the temporary reconnect socket before opening a new game flow.
+                            networkManager.disconnect();
+                        } catch (IOException e) {
+                            System.err.println("Connection could not be closed: " + e.getMessage());
+                        }
+                        reconnectInProgress = false;
+                        // The simple reconnect flow does not restore the old room,
+                        // so the user is sent back to the main menu.
+                        JOptionPane.showMessageDialog(
+                                this,
+                                "Server connection re-established.\nReturning to the main menu as the old room information was not preserved..",
+                                "Connection Restored",
+                                JOptionPane.INFORMATION_MESSAGE);
+                        new StartFrame().setVisible(true);
+                        this.dispose();
+                    });
+                    return;
+                }
+            }
+        });
+        // Allow the application to close even if the reconnect thread is still running.
+        reconnectThread.setDaemon(true);
+        reconnectThread.start();
+
+         // Inform the user that the connection was lost and reconnect attempts are running
+        JOptionPane.showMessageDialog(
+                this,
+                errorMessage + "\nThe main menu will be restored once the server is back online..",
+                "Connection Lost",
+                JOptionPane.ERROR_MESSAGE);
     }
 
     /**
@@ -289,6 +470,12 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
         lblChance2 = new javax.swing.JLabel();
         lblYahtzee = new javax.swing.JLabel();
         lblYahtzee2 = new javax.swing.JLabel();
+        player1Total = new javax.swing.JLabel();
+        player2Total = new javax.swing.JLabel();
+        player1Bonus = new javax.swing.JLabel();
+        player2Bonus = new javax.swing.JLabel();
+        player1Score = new javax.swing.JLabel();
+        player2Score = new javax.swing.JLabel();
         otherPlayerlbl = new javax.swing.JLabel();
         ownPlayerlbl = new javax.swing.JLabel();
         jPanel3 = new javax.swing.JPanel();
@@ -483,6 +670,18 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
         lblYahtzee2.setForeground(new java.awt.Color(255, 51, 51));
         lblYahtzee2.setText("0");
 
+        player1Total.setFont(new java.awt.Font("Helvetica Neue", 1, 13)); // NOI18N
+
+        player2Total.setFont(new java.awt.Font("Helvetica Neue", 1, 13)); // NOI18N
+
+        player1Bonus.setFont(new java.awt.Font("Helvetica Neue", 1, 13)); // NOI18N
+
+        player2Bonus.setFont(new java.awt.Font("Helvetica Neue", 1, 13)); // NOI18N
+
+        player1Score.setFont(new java.awt.Font("Helvetica Neue", 1, 13)); // NOI18N
+
+        player2Score.setFont(new java.awt.Font("Helvetica Neue", 1, 13)); // NOI18N
+
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
@@ -502,11 +701,6 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
             .addComponent(jSeparator14)
             .addComponent(jSeparator5)
             .addComponent(jSeparator13, javax.swing.GroupLayout.Alignment.TRAILING)
-            .addGroup(jPanel2Layout.createSequentialGroup()
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel8)
-                    .addComponent(jLabel9))
-                .addGap(0, 0, Short.MAX_VALUE))
             .addComponent(jSeparator16)
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addGap(110, 110, 110)
@@ -524,7 +718,11 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addContainerGap()
                 .addComponent(jLabel16)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addGap(74, 74, 74)
+                .addComponent(player1Score, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(player2Score, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(42, 42, 42))
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel2)
                 .addGap(98, 98, 98)
@@ -560,6 +758,20 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                 .addComponent(lblSixes2, javax.swing.GroupLayout.PREFERRED_SIZE, 20, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(57, 57, 57))
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addComponent(jLabel8)
+                .addGap(90, 90, 90)
+                .addComponent(player1Total, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(player2Total, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(42, 42, 42))
+            .addGroup(jPanel2Layout.createSequentialGroup()
+                .addComponent(jLabel9)
+                .addGap(86, 86, 86)
+                .addComponent(player1Bonus, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(player2Bonus, javax.swing.GroupLayout.PREFERRED_SIZE, 35, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(42, 42, 42))
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addComponent(jLabel15)
                 .addGap(42, 42, 42)
@@ -663,11 +875,17 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator9, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(3, 3, 3)
-                .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(player1Total, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(player2Total, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator4, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(4, 4, 4)
-                .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel9, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(player1Bonus, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(player2Bonus, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator8, javax.swing.GroupLayout.PREFERRED_SIZE, 4, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(7, 7, 7)
@@ -721,7 +939,10 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jSeparator16, javax.swing.GroupLayout.PREFERRED_SIZE, 12, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabel16)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel16)
+                    .addComponent(player1Score)
+                    .addComponent(player2Score))
                 .addContainerGap(12, Short.MAX_VALUE))
         );
 
@@ -933,6 +1154,9 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
         java.awt.EventQueue.invokeLater(() -> {
             // Memorize the current game status.
             this.currentSession = (GameState) msg.getData();
+            if (!currentSession.isGameOver()) {
+                this.gameOverDialogShown = false;
+            }
 
             // Unlock it first: The wait ends the moment the package arrives.
             this.isWaitingForServer = false;
@@ -956,6 +1180,16 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
                 updateDiceIcons(d);
             }
 
+            if (currentSession.isGameOver()) {
+                RollButton.setEnabled(false);
+                setHoldButtonsEnabled(false);
+                disableAllScoreLabels();
+                revalidate();
+                repaint();
+                showGameOverDialog();
+                return;
+            }
+
             //  (CRITICAL) Enable/Disable Button and Panel Locks in Sequence
             RollButton.setEnabled(isMyTurn);
 
@@ -963,7 +1197,7 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
                 // My turn: Make empty categories clickable.
                 enableScoreLabelsIfMyTurn();
                 refreshHoldButtons();
-                System.out.println("Sıra Player " + myPlayerId + " tarafına geçti.");
+                System.out.println(" Player " + myPlayerId + "'s turn.");
             } else {
                 // Now it's the opponent's turn: Lock everything down.
                 disableAllScoreLabels();
@@ -979,12 +1213,29 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
 
     @Override
     public void onErrorMessageReceived(NetworkMessage msg) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+        java.awt.EventQueue.invokeLater(() -> {
+            if ("NETWORK".equals(msg.getSender())) {
+                handleServerDisconnected(String.valueOf(msg.getData()));
+                return;
+            }
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Error: " + msg.getData(),
+                    "Server Error",
+                    JOptionPane.ERROR_MESSAGE);
+        });
     }
 
     @Override
     public void onJoinMessageReceived(NetworkMessage msg) {
-        // joptionpane ile katıldı yazılacak
+        java.awt.EventQueue.invokeLater(() -> {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Player 2 Joined.\nRoom ID: " + msg.getData(),
+                    "Player Joined",
+                    JOptionPane.INFORMATION_MESSAGE);
+        });
     }
 
     @Override
@@ -1034,7 +1285,7 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
     private void enableScoreLabelsIfMyTurn() {
         // Only unlock the lock if it's our turn.
         if (currentSession.getCurrentPlayer() == myPlayerId && !isWaitingForServer) {
-            isWaitingForServer = false; // Kilidi kaldır
+            isWaitingForServer = false; // Don't lock
 
             //Get each Player's own table
             Map<String, Integer> myScores = (myPlayerId == 1)
@@ -1118,7 +1369,7 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
     }
 
     private void updateDiceIcons(Dice[] dices) {
-        // Dizideki her zarın numarasını ikon haline getirip label'lara basar
+        // It turns each die number in the sequence into an icon and prints it to the labels.
         Dice1.setText(getDiceIcon(dices[0].getNumber()));
         Dice2.setText(getDiceIcon(dices[1].getNumber()));
         Dice3.setText(getDiceIcon(dices[2].getNumber()));
@@ -1240,6 +1491,12 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
     private javax.swing.JLabel lblYahtzee2;
     private javax.swing.JLabel otherPlayerlbl;
     private javax.swing.JLabel ownPlayerlbl;
+    private javax.swing.JLabel player1Bonus;
+    private javax.swing.JLabel player1Score;
+    private javax.swing.JLabel player1Total;
+    private javax.swing.JLabel player2Bonus;
+    private javax.swing.JLabel player2Score;
+    private javax.swing.JLabel player2Total;
     private javax.swing.JLabel roomIDlbl;
     // End of variables declaration//GEN-END:variables
 

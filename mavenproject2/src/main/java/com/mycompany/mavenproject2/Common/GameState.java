@@ -44,7 +44,7 @@ public class GameState implements Serializable {
     }
 
     private void initializeScorecards() {
-        // Yahtzee kategorileri
+        // Yahtzee Categories
         String[] categories = {
             "Ones", "Twos", "Threes", "Fours", "Fives", "Sixes",
             "Three of a Kind", "Four of a Kind", "Full House",

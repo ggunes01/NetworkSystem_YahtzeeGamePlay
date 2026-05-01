@@ -70,7 +70,7 @@ public class ClientHandler implements Runnable {
                     if (session != null) {
                         this.currentSession = session;
 
-                        sendToClient(new NetworkMessage(MessageType.JOIN_GAME, joinId, "SERVER"));
+                        broadcastToRoom(new NetworkMessage(MessageType.JOIN_GAME, joinId, "SERVER"));
                         // Announce to both player that the game is started (Broadcast)
                         broadcastToRoom(new NetworkMessage(MessageType.GAME_UPDATE, session.getGameState(), "SERVER"));
                     } else {

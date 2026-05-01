@@ -14,7 +14,16 @@ import java.util.stream.Collectors;
  * @author ggunes
  */
 public class ScoringLogic {
+    // Upper section categories 
+    private static final String[] UPPER_SECTION_CATEGORIES = {
+        "Ones", "Twos", "Threes", "Fours", "Fives", "Sixes"
+    };
+
+      // Bonus rules for upper section
+    private static final int UPPER_SECTION_BONUS_LIMIT = 63;
+    private static final int UPPER_SECTION_BONUS = 35;
     
+    // Main method to calculate score based on selected category
     public static int calculateScore(String category, Dice[] dices) {
         int[] values = new int[5];
         for (int i = 0; i < 5; i++) {
@@ -40,12 +49,49 @@ public class ScoringLogic {
         }
     }
 
+    // Calculate total score of upper section
+    public static int calculateUpperSectionTotal(Map<String, Integer> scoreMap) {
+        return sumCategories(scoreMap, UPPER_SECTION_CATEGORIES);
+    }
+
+    // Check if bonus is earned in upper section
+    public static int calculateUpperSectionBonus(Map<String, Integer> scoreMap) {
+        return calculateUpperSectionTotal(scoreMap) >= UPPER_SECTION_BONUS_LIMIT
+                ? UPPER_SECTION_BONUS
+                : 0;
+    }
+
+    // Calculate final score including bonus
+    public static int calculateFinalScore(Map<String, Integer> scoreMap) {
+        int total = calculateUpperSectionBonus(scoreMap);
+        for (int score : scoreMap.values()) {
+            if (score != -1) {
+                total += score;
+            }
+        }
+        return total;
+    }
+
+    // Sum selected categories from score map
+    private static int sumCategories(Map<String, Integer> scoreMap, String[] categories) {
+        int total = 0;
+        for (String category : categories) {
+            int score = scoreMap.getOrDefault(category, -1);
+            if (score != -1) {
+                total += score;
+            }
+        }
+        return total;
+    }
+
+    // Count and sum specific dice values
     private static int countSpecificValue(int[] values, int target) {
         int sum = 0;
         for (int v : values) if (v == target) sum += v;
         return sum;
     }
 
+    // Check if there are at least N same dice values
   private static boolean checkNOfAKind(int[] values, int n) {
 
     Map<Integer, Integer> counts = new HashMap<>();
@@ -61,11 +107,13 @@ public class ScoringLogic {
     return false;
 }
 
+  // Check if dice form a full house
     private static boolean isFullHouse(int[] v) {
         return (v[0] == v[1] && v[2] == v[4] && v[1] != v[2]) || 
                (v[0] == v[2] && v[3] == v[4] && v[2] != v[3]);
     }
 
+    // Check if there is a straight of given length
     private static boolean isStraight(int[] v, int length) {
         int continuous = 1;
         int maxContinuous = 1;
