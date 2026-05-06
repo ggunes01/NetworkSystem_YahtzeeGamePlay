@@ -22,6 +22,9 @@ import java.net.Socket;
 
 public class NetworkManager implements Runnable {
 
+    private static final String SERVER_HOST = "16.171.9.172";
+    private static final int SERVER_PORT = 5001;
+
     private Socket socket;
     private ObjectOutputStream out;
     private ObjectInputStream in;
@@ -33,6 +36,34 @@ public class NetworkManager implements Runnable {
     // Stores the last successful connection details so reconnect can try the same server again.
     private String lastIp;
     private int lastPort;
+
+    public static String getDefaultServerHost() {
+        String propertyHost = System.getProperty("yahtzee.server.host");
+        if (propertyHost != null && !propertyHost.trim().isEmpty()) {
+            return propertyHost.trim();
+        }
+
+        String environmentHost = System.getenv("YAHTZEE_SERVER_HOST");
+        if (environmentHost != null && !environmentHost.trim().isEmpty()) {
+            return environmentHost.trim();
+        }
+
+        return SERVER_HOST;
+    }
+
+    public static int getDefaultServerPort() {
+        String propertyPort = System.getProperty("yahtzee.server.port");
+        if (propertyPort != null && !propertyPort.trim().isEmpty()) {
+            return Integer.parseInt(propertyPort.trim());
+        }
+
+        String environmentPort = System.getenv("YAHTZEE_SERVER_PORT");
+        if (environmentPort != null && !environmentPort.trim().isEmpty()) {
+            return Integer.parseInt(environmentPort.trim());
+        }
+
+        return SERVER_PORT;
+    }
 
     // Opens a connection to the server and starts a background listener thread.
     public synchronized void connect(String ip, int port, INetworkListener listener) throws IOException {

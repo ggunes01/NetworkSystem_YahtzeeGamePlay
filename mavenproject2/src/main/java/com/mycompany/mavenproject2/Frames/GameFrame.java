@@ -69,6 +69,7 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
     private Boolean isWaitingForServer = false;
     private boolean gameOverDialogShown = false;
     private boolean reconnectInProgress = false;
+    private boolean returningToStartFrame = false;
     private int myPlayerId;
     private String roomId;
 
@@ -274,7 +275,7 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
         int choice = JOptionPane.showOptionDialog(
                 this,
                 winnerText + "\nPlayer 1 Score: " + p1FinalScore + "\nPlayer 2 Score: " + p2FinalScore,
-                "Oyun Bitti",
+                "Game Over",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.INFORMATION_MESSAGE,
                 null,
@@ -397,6 +398,33 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
                 errorMessage + "\nThe main menu will be restored once the server is back online..",
                 "Connection Lost",
                 JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void handlePlayerLeft(String message) {
+        if (returningToStartFrame) {
+            return;
+        }
+        returningToStartFrame = true;
+
+        isWaitingForServer = true;
+        RollButton.setEnabled(false);
+        disableAllScoreLabels();
+        setHoldButtonsEnabled(false);
+
+        JOptionPane.showMessageDialog(
+                this,
+                message,
+                "Game closed",
+                JOptionPane.INFORMATION_MESSAGE);
+
+        try {
+            networkManager.disconnect();
+        } catch (IOException e) {
+            System.err.println("Connection could not be closed: " + e.getMessage());
+        }
+
+        new StartFrame().setVisible(true);
+        this.dispose();
     }
 
     /**
@@ -1146,7 +1174,7 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
 
     @Override
     public void onChatMessageReceived(NetworkMessage msg) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    //Optional    
     }
 
     @Override
@@ -1214,6 +1242,11 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
     @Override
     public void onErrorMessageReceived(NetworkMessage msg) {
         java.awt.EventQueue.invokeLater(() -> {
+            if ("PLAYER_LEFT".equals(msg.getSender())) {
+                handlePlayerLeft(String.valueOf(msg.getData()));
+                return;
+            }
+
             if ("NETWORK".equals(msg.getSender())) {
                 handleServerDisconnected(String.valueOf(msg.getData()));
                 return;
@@ -1240,7 +1273,7 @@ public class GameFrame extends javax.swing.JFrame implements INetworkListener {
 
     @Override
     public void onCreateMessageReceived(NetworkMessage msg) {
-        throw new UnsupportedOperationException("Not supported yet."); // Generated from nbfs://nbhost/SystemFileSystem/Templates/Classes/Code/GeneratedMethodBody
+    //
     }
 
     private void Dice1HoldButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_Dice1HoldButtonActionPerformed

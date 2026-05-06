@@ -46,6 +46,7 @@ public class ClientHandler implements Runnable {
         } catch (Exception e) {
             System.out.println("Client Connection Lost: " + e.getMessage());
 
+            handleClientDisconnected();
             ServerMain.allClients.remove(this);
         }
     }
@@ -132,6 +133,36 @@ public class ClientHandler implements Runnable {
         out.reset();
         out.writeObject(msg);
         out.flush();
+    }
+
+    private void handleClientDisconnected() {
+        if (currentSession == null) {
+            return;
+        }
+
+        GameSession disconnectedSession = currentSession;
+        ClientHandler otherPlayer = null;
+        String message = null;
+
+        if (disconnectedSession.getPlayer1() == this) {
+            otherPlayer = disconnectedSession.getPlayer2();
+            message = "Player 1 left.";
+        } else if (disconnectedSession.getPlayer2() == this) {
+            otherPlayer = disconnectedSession.getPlayer1();
+            message = "Player 2 left.";
+        }
+
+        GameEngine.closeGame(disconnectedSession);
+        currentSession = null;
+
+        if (otherPlayer != null) {
+            otherPlayer.currentSession = null;
+            try {
+                otherPlayer.sendToClient(new NetworkMessage(MessageType.ERROR, message, "PLAYER_LEFT"));
+            } catch (IOException e) {
+                System.err.println("Player leave notification could not be sent: " + e.getMessage());
+            }
+        }
     }
 
 }

@@ -116,7 +116,10 @@ public class StartFrame extends javax.swing.JFrame {
                 }
             };
 
-            networkManager.connect("127.0.0.1", 5001, myAdapter);
+            networkManager.connect(
+                    NetworkManager.getDefaultServerHost(),
+                    NetworkManager.getDefaultServerPort(),
+                    myAdapter);
 
             NetworkMessage createMsg = new NetworkMessage(MessageType.CREATE_GAME, null, "1");
             networkManager.sendMessage(createMsg);

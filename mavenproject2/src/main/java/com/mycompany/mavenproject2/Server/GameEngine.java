@@ -112,6 +112,13 @@ public class GameEngine {
         return activeGames.get(gameId);
     }
 
+    // Closes a room and removes it from the active rooms list.
+    public static void closeGame(GameSession session) {
+        if (session != null) {
+            activeGames.remove(session.getGameId());
+        }
+    }
+
     //Exception to handle error, in case of the room is not exist
     public static class RoomNotFoundException extends Exception {
 

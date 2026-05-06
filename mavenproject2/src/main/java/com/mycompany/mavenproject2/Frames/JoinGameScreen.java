@@ -168,7 +168,10 @@ public class JoinGameScreen extends javax.swing.JFrame {
         }
         try {
 
-            networkManager.connect("127.0.0.1", 5001, new NetworkAdapter() {
+            networkManager.connect(
+                    NetworkManager.getDefaultServerHost(),
+                    NetworkManager.getDefaultServerPort(),
+                    new NetworkAdapter() {
                 @Override
                 public void onJoinMessageReceived(NetworkMessage msg) {
                     // The data that comes from Server is Room ID
