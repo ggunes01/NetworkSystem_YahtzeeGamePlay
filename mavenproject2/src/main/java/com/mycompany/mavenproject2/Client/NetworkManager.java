@@ -22,7 +22,7 @@ import java.net.Socket;
 
 public class NetworkManager implements Runnable {
 
-    private static final String SERVER_HOST = "16.171.9.172";
+    private static final String SERVER_HOST = "********";
     private static final int SERVER_PORT = 5001;
 
     private Socket socket;
