@@ -18,32 +18,6 @@ Two players can connect to a shared server, create or join game rooms using uniq
  Graceful disconnect handling — notifies the remaining player when someone leaves
 
 
-
-Package Structure
-src/main/java/com/mycompany/mavenproject2/
-│
-├── Server/
-│   ├── ServerMain.java       # Starts the server, accepts incoming connections
-│   ├── ClientHandler.java    # Handles one client per thread (Runnable)
-│   ├── GameEngine.java       # Core game logic: create/join/score/close rooms
-│   └── GameSession.java      # Holds the state of a single active game room
-
-├── Client/
-│   ├── NetworkManager.java   # Manages TCP connection, send/receive on a background thread
-│   └── INetworkListener.java # Observer interface between network layer and GUI
-
-├── Common/
-│   ├── NetworkMessage.java   # Serializable message envelope (type + data + sender)
-│   ├── GameState.java        # Serializable full game state (dice, scores, turn info)
-│   ├── Dice.java             # Dice model with hold/roll state
-│   └── ScoringLogic.java     # All scoring rules: upper section, straights, full house, Yahtzee…
-
-└── Frames/
-    ├── StartFrame.java       # Main menu (Create / Join)
-    ├── JoinGameScreen.java   # Room ID entry screen
-    ├── GameFrame.java        # Main game board UI
-    └── NetworkAdapter.java   # Default adapter for INetworkListener callbacks
-
  Technologies Used
 TechnologyPurposeJava 25Core language (with preview features enabled)Java Sockets (TCP/IP)Client-server communicationJava Object SerializationSending GameState and NetworkMessage objects over the networkJava MultithreadingEach client connection runs on a dedicated threadConcurrentHashMapThread-safe storage for active game sessionsJava SwingGraphical user interfaceApache MavenBuild and dependency managementNetBeans AbsoluteLayoutUI form layout
 
