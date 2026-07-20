@@ -27,17 +27,17 @@ src/main/java/com/mycompany/mavenproject2/
 │   ├── ClientHandler.java    # Handles one client per thread (Runnable)
 │   ├── GameEngine.java       # Core game logic: create/join/score/close rooms
 │   └── GameSession.java      # Holds the state of a single active game room
-│
+
 ├── Client/
 │   ├── NetworkManager.java   # Manages TCP connection, send/receive on a background thread
 │   └── INetworkListener.java # Observer interface between network layer and GUI
-│
+
 ├── Common/
 │   ├── NetworkMessage.java   # Serializable message envelope (type + data + sender)
 │   ├── GameState.java        # Serializable full game state (dice, scores, turn info)
 │   ├── Dice.java             # Dice model with hold/roll state
 │   └── ScoringLogic.java     # All scoring rules: upper section, straights, full house, Yahtzee…
-│
+
 └── Frames/
     ├── StartFrame.java       # Main menu (Create / Join)
     ├── JoinGameScreen.java   # Room ID entry screen
