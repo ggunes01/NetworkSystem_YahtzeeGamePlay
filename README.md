@@ -1,8 +1,8 @@
-   Multiplayer Yahtzee Game — Network System Design Project
+   Multiplayer Yahtzee Game 
 A fully functional, real-time multiplayer Yahtzee game built with Java, featuring a custom TCP/IP client-server architecture, multi-threaded connection handling, and a Java Swing graphical interface.
 
  About the Project
-This project was developed as a Network System Design course project at Fatih Sultan Mehmet Foundation University. The goal was to design and implement a networked multiplayer game from scratch — without relying on any game framework — to demonstrate real-world understanding of socket programming, concurrent server design, and network message protocols.
+ The goal was to design and implement a networked multiplayer game from scratch — without relying on any game framework — to demonstrate real-world understanding of socket programming, concurrent server design, and network message protocols.
 Two players can connect to a shared server, create or join game rooms using unique room IDs, and play a complete game of Yahtzee in real time over a TCP connection.
 
  Features
